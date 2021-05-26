@@ -282,18 +282,14 @@ int main(int argc, char *argv[])
 	if (sid == -1)
 		sid = getsid(pid);
 
-	printf("TeleType device   | TTY  : %s\n", tty ?: "0:0");
-	printf("Process ID        | PID  : %d\n", pid);
-	printf("Process group ID  | PGID : %d\n", pgid);
-	printf("Parent process ID | PPID : %d\n", ppid);
-	printf("Session ID        | SID  : %d\n", sid);
-	printf("Foreground PGID   | TGID : %d\n", tgid);
-	puts("");
-
-	printf("In same session          :");
-	list(sid);
-	printf("In same pgid             :");
-	list(pgid);
+	printf("TeleType device    | TTY  : %s\n", tty ?: "0:0");
+	printf("Process ID         | PID  : %d\n", pid);
+	printf("Process group ID   | PGID : %d\n", pgid);
+	printf("Parent process ID  | PPID : %d\n", ppid);
+	printf("Session ID         | SID  : %d\n", sid);
+	printf("Foreground PGID    | TGID : %d\n", tgid);
+	printf("Procs in same SID  | "); list(sid);
+	printf("Procs in same PGID | "); list(pgid);
 
 	return 0;
 }
