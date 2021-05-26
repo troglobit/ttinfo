@@ -288,8 +288,8 @@ int main(int argc, char *argv[])
 	printf("Parent process ID  | PPID : %d\n", ppid);
 	printf("Session ID         | SID  : %d\n", sid);
 	printf("Foreground PGID    | TGID : %d\n", tgid);
-	printf("Procs in same SID  | "); list(sid);
-	printf("Procs in same PGID | "); list(pgid);
+	printf("Procs in same SID  |"); list(sid);
+	printf("Procs in same PGID |"); list(pgid);
 
 	return 0;
 }
