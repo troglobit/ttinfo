@@ -4,7 +4,7 @@ SRCS   := ttinfo.c
 OBJS   := ttinfo.o
 CFLAGS := -g -Og -W -Wall -Wextra
 
-all: $(EXEC) $(EXECPPC)
+all: $(EXEC)
 
 $(EXEC): $(OBJS)
 	$(CC) -o $@ $^ $(LDLIBS)
