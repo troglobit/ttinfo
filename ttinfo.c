@@ -155,6 +155,12 @@ static int list(pid_t sid)
 	return 0;
 }
 
+static int usage(int rc)
+{
+	printf("usage: ttinfo [-g pgid] [-p pid] [-s sid] [TTY]\n");
+	return rc;
+}
+
 int main(int argc, char *argv[])
 {
 	pid_t pgid = -1;
@@ -169,8 +175,7 @@ int main(int argc, char *argv[])
 		switch(c) {
 		case 'h':
 		case '?':
-			printf("usage: ttinfo [-g pgid] [-p pid] [-s sid] [TTY]");
-			return 0;
+			return usage(0);
 
 		case 'g':
 			pgid = atoi(optarg);
@@ -183,6 +188,9 @@ int main(int argc, char *argv[])
 		case 's':
 			sid = atoi(optarg);
 			break;
+
+		default:
+			return usage(1);
 		}
 	}
 	if (optind < argc)
