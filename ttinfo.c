@@ -47,8 +47,6 @@ struct procstat {
 static char *find_tty(int dev)
 {
 	static char name[42];
-	char buf[256];
-	char path[80];
 
 	if (major(dev) == 136) {	/* /dev/pts/N */
 		struct stat st;
@@ -59,12 +57,18 @@ static char *find_tty(int dev)
 			return NULL;
 		}
 	} else {
+		char buf[256];
+		char path[80];
+		ssize_t len;
+
 		snprintf(path, sizeof(path), "/sys/dev/char/%d:%d", major(dev), minor(dev));
-		if (readlink(path, buf, sizeof(buf)) == -1) {
+		len = readlink(path, buf, sizeof(buf));
+		if (len == -1) {
 			if (errno != ENOENT)
 				warn("readlink(%s)", path);
 			return NULL;
 		}
+		buf[len] = 0;
 
 		snprintf(name, sizeof(name), "/dev/%s", basename(buf));
 	}
@@ -257,12 +261,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	fd = open(tty, O_RDWR | O_NONBLOCK);
-	if (fd == -1)
-		warn("failed opening %s", tty);
-	else {
-		tgid = tcgetpgrp(fd);
-		close(fd);
+	if (tty) {
+		fd = open(tty, O_RDWR | O_NONBLOCK);
+		if (fd == -1)
+			warn("failed opening %s", tty);
+		else {
+			tgid = tcgetpgrp(fd);
+			close(fd);
+		}
 	}
 
 	if (pid == -1) {
@@ -276,18 +282,20 @@ int main(int argc, char *argv[])
 	if (sid == -1)
 		sid = getsid(pid);
 
-	printf("TeleType device (TTY)              : %s\n", tty ?: "0:0");
-	printf("Session ID (SID)                   : %d\n", sid);
-	printf("Foreground process group ID (TGID) : %d\n", tgid);
-	printf("Parent process ID (PPID)           : %d\n", ppid);
-	printf("Process ID (PID)                   : %d\n", pid);
-	printf("Process group ID (PGID)            : %d\n", pgid);
+	printf("TeleType device   | TTY  : %s\n", tty ?: "0:0");
+	printf("Process ID        | PID  : %d\n", pid);
+	printf("Process group ID  | PGID : %d\n", pgid);
+	printf("Parent process ID | PPID : %d\n", ppid);
+	printf("Session ID        | SID  : %d\n", sid);
+	printf("Foreground PGID   | TGID : %d\n", tgid);
+	puts("");
 
-	printf("In same session                    :");
+	printf("In same session          :");
 	list(sid);
-
-	printf("In same pgid                       :");
+	printf("In same pgid             :");
 	list(pgid);
+
+	return 0;
 }
 
 /**
