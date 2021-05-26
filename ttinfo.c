@@ -18,8 +18,10 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +43,34 @@ struct procstat {
 	int           tpgid;   
 	unsigned int  flags;   
 };
+
+static char *find_tty(int dev)
+{
+	static char name[42];
+	char buf[256];
+	char path[80];
+
+	if (major(dev) == 136) {	/* /dev/pts/N */
+		struct stat st;
+
+		snprintf(name, sizeof(name), "/dev/pts/%d", minor(dev));
+		if (stat(name, &st) == -1) {
+			warn("stat(%s)", name);
+			return NULL;
+		}
+	} else {
+		snprintf(path, sizeof(path), "/sys/dev/char/%d:%d", major(dev), minor(dev));
+		if (readlink(path, buf, sizeof(buf)) == -1) {
+			if (errno != ENOENT)
+				warn("readlink(%s)", path);
+			return NULL;
+		}
+
+		snprintf(name, sizeof(name), "/dev/%s", basename(buf));
+	}
+
+	return name;
+}
 
 static int filter(const struct dirent *d)
 {
@@ -111,9 +141,13 @@ static int show(pid_t pid, const struct dirent *d)
 	if (getproc(atoi(d->d_name), &p))
 		return -1;
 
-	if (pid == p.sid || pid == p.pgrp)
-		printf(" %s(%d %d %d %d:%d) ", p.comm, p.pid, p.pgrp,
-		       p.sid, major(p.tty), minor(p.tty));
+	if (pid == p.sid || pid == p.pgrp) {
+		char *tty = find_tty(p.tty);
+
+		if (!tty)
+			tty = "0:0";
+		printf(" %s(%d %d %d %s) ", p.comm, p.pid, p.pgrp, p.sid, tty);
+	}
 
 	return 0;
 }
@@ -126,6 +160,16 @@ static int find_ppid(pid_t pid)
 		return -1;
 
 	return p.ppid;
+}
+
+static int find_dev(pid_t pid)
+{
+	struct procstat p;
+
+	if (getproc(pid, &p))
+		return -1;
+
+	return p.tty;
 }
 
 static int pid_exists(pid_t pid)
@@ -163,12 +207,12 @@ static int usage(int rc)
 
 int main(int argc, char *argv[])
 {
+	char *tty  = NULL;
 	pid_t pgid = -1;
-	pid_t sid = -1;
-	pid_t pid = -1;
-	pid_t tgid;
-	pid_t ppid;
-	char *tty;
+	pid_t sid  = -1;
+	pid_t pid  = -1;
+	pid_t tgid = -1;
+	pid_t ppid = -1;
 	int fd, c;
 
 	while ((c = getopt(argc, argv, "g:h?p:s:")) != EOF) {
@@ -193,24 +237,34 @@ int main(int argc, char *argv[])
 			return usage(1);
 		}
 	}
-	if (optind < argc)
-		tty = argv[optind];
-	else {
-		tty = ttyname(STDIN_FILENO);
-		if (!tty)
-			tty = "/dev/tty";
-	}
 
 	if (pid != -1 && !pid_exists(pid))
 		errx(1, "cannot find pid %d", pid);
 
+	if (optind < argc)
+		tty = argv[optind];
+	else {
+		if (pid != -1) {
+			int dev;
+
+			dev = find_dev(pid);
+			if (dev != -1)
+				tty = find_tty(dev);
+		} else {
+			tty = ttyname(STDIN_FILENO);
+			if (!tty)
+				tty = "/dev/tty";
+		}
+	}
+
 	fd = open(tty, O_RDWR | O_NONBLOCK);
 	if (fd == -1)
-		err(1, "failed opening %s", tty);
+		warn("failed opening %s", tty);
+	else {
+		tgid = tcgetpgrp(fd);
+		close(fd);
+	}
 
-	tgid = tcgetpgrp(fd);
-//	if (tgid == -1)
-//		err(1, "no foreground process group");
 	if (pid == -1) {
 		pid = getpid();
 		ppid = getppid();
@@ -222,17 +276,17 @@ int main(int argc, char *argv[])
 	if (sid == -1)
 		sid = getsid(pid);
 
-	printf("TTY                      : %s\n", tty);
-	printf("Session ID               : %d\n", sid);
-	printf("Foreground process group : %d\n", tgid);
-	printf("Parent process ID        : %d\n", ppid);
-	printf("Process ID               : %d\n", pid);
-	printf("PGID                     : %d\n", pgid);
+	printf("TeleType device (TTY)              : %s\n", tty ?: "0:0");
+	printf("Session ID (SID)                   : %d\n", sid);
+	printf("Foreground process group ID (TGID) : %d\n", tgid);
+	printf("Parent process ID (PPID)           : %d\n", ppid);
+	printf("Process ID (PID)                   : %d\n", pid);
+	printf("Process group ID (PGID)            : %d\n", pgid);
 
-	printf("In same session          :");
+	printf("In same session                    :");
 	list(sid);
 
-	printf("In same pgid             :");
+	printf("In same pgid                       :");
 	list(pgid);
 }
 
