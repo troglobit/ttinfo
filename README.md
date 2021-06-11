@@ -5,7 +5,7 @@ Display information about a process, group or tty.  By default the tty
 and process of the current terminal is examined.
 
 
-Example
+example
 -------
 
 ```
@@ -19,3 +19,10 @@ Foreground PGID    | TGID : 3301
 Procs in same SID  | init(1 1 1 0:0)  logit(2056 1 1 0:0) 
 Procs in same PGID | ttinfo(3301 3301 2336 /dev/ttyS0) 
 ```
+
+
+origin
+------
+
+Hacked together a day when I really needed to figure a few things out
+about TTYs in Linux on various embedded targets.
