@@ -1,5 +1,6 @@
 EXEC   := ttinfo
 EXECPPC:= ttinfo.ppc
+EXECARM:= ttinfo.arm
 SRCS   := ttinfo.c
 OBJS   := ttinfo.o
 CFLAGS := -g -Og -W -Wall -Wextra
@@ -10,10 +11,13 @@ $(EXEC): $(OBJS)
 	$(CC) -o $@ $^ $(LDLIBS)
 
 $(EXECPPC): $(SRCS)
-	/usr/local/powerpc-unknown-linux-gnu-5.3-1/bin/powerpc-unknown-linux-gnu-gcc -o $@ $^
+	powerpc-unknown-linux-gnu-gcc -o $@ $^
+
+$(EXECPPC): $(SRCS)
+	arm-unknown-linux-gnueabi-gcc -o $@ $^
 
 clean:
-	$(RM) $(EXEC) $(OBJS)
+	$(RM) $(EXEC) $(EXECPPC) $(EXECARM) $(OBJS)
 
 distclean: clean
 	$(RM) *.o *~ *.bak
